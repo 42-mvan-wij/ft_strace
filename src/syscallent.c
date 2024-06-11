@@ -10,7 +10,7 @@
 
 #include "syscallent.h"
 
-void print_char(char c) {
+void print_char(unsigned char c) {
 	switch (c) {
 		case '\t':
 			printf("\\t");
@@ -34,7 +34,7 @@ void print_char(char c) {
 			printf("\\\""); // NOTE: the real strace does not print a backslash
 			break;
 		default:
-			if ((c >= '\0' && c <= '\10') || (c >= '\16' && c <= '\37') || c == '\177') {
+			if ((c >= '\0' && c <= '\10') || (c >= '\16' && c <= '\37') || c >= '\177') {
 				printf("\\%o", c);
 			}
 			else {
