@@ -282,7 +282,10 @@ pid_t start_tracee(char **args, char **envp) {
 
 typedef struct {
 	bool started;
-	bool syscall_entry;
+	enum {
+		WAIT_FOR_RETURN,
+		WAIT_FOR_ENTRY,
+	} syscall_state;
 } tracing_state_t;
 
 void handle_x86_64_syscall(pid_t pid, tracing_state_t *state, struct user_regs_struct *regs) {
@@ -293,9 +296,10 @@ void handle_x86_64_syscall(pid_t pid, tracing_state_t *state, struct user_regs_s
 		return;
 	}
 
-	struct syscall_ent entry = syscall_ent[regs->orig_rax];
+	if (state->syscall_state == WAIT_FOR_ENTRY && -regs->rax == ENOSYS) {
+		// fprintf(stderr, "\nRequesting entry %lli - %lli\n\n", regs->orig_rax, regs->rax);
+		struct syscall_ent entry = syscall_ent[regs->orig_rax];
 
-	if (state->syscall_entry) {
 		size_t args[] = {
 			regs->rdi,
 			regs->rsi,
@@ -307,14 +311,16 @@ void handle_x86_64_syscall(pid_t pid, tracing_state_t *state, struct user_regs_s
 		printf("%s(", entry.name);
 		entry.bound_fn.fn(args, pid, entry.bound_fn.bound_arg);
 		printf(")");
+		state->syscall_state = WAIT_FOR_RETURN;
 	}
-	else {
-		if ((long long int)regs->rax < 0) {
+	else if (state->syscall_state == WAIT_FOR_RETURN) {
+		if ((long long)regs->rax < 0) {
 			printf(" = -1 %s (%s)\n", get_errno_name(-regs->rax), strerror(-regs->rax));
 		}
 		else {
 			printf(" = %lli\n", regs->rax);
 		}
+		state->syscall_state = WAIT_FOR_ENTRY;
 	}
 }
 
@@ -333,7 +339,7 @@ void trace(pid_t pid) {
 	siginfo_t si;
 	tracing_state_t state = {
 		.started = false,
-		.syscall_entry = true,
+		.syscall_state = WAIT_FOR_ENTRY,
 	};
 	int signal = 0;
 	int status = 0;
@@ -360,9 +366,10 @@ void trace(pid_t pid) {
 			signal = 0;
 		}
 		handle_syscall2(pid, &state);
-		state.syscall_entry = !state.syscall_entry;
 	}
-	// printf("\n");
+	if (state.started && state.syscall_state == WAIT_FOR_RETURN) {
+		printf(" = ?\n");
+	}
 }
 
 int main(int argc, char **argv, char **envp) {
