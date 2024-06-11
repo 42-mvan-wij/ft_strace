@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 // ^ This is needed to get access to process_vm_readv
 
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/syscall.h>
 #include <stdio.h>
@@ -260,6 +259,15 @@ char const * get_errno_name(long long errno_val) {
 		case ERFKILL:         return "ERFKILL";
 		case EHWPOISON:       return "EHWPOISON";
 		// case ENOTSUP:         return "ENOTSUP";
+
+		case ERESTARTSYS:           return "ERESTARTSYS";
+		case ERESTARTNOINTR:        return "ERESTARTNOINTR";
+		case ERESTARTNOHAND:        return "ERESTARTNOHAND";
+		case ENOIOCTLCMD:           return "ENOIOCTLCMD";
+		case ERESTART_RESTARTBLOCK: return "ERESTART_RESTARTBLOCK";
+		case EPROBE_DEFER:          return "EPROBE_DEFER";
+		case EOPENSTALE:            return "EOPENSTALE";
+		case ENOPARAM:              return "ENOPARAM";
 	}
 	return "*UNKOWN*";
 }

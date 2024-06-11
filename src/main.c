@@ -288,6 +288,20 @@ typedef struct {
 	} syscall_state;
 } tracing_state_t;
 
+char const *ft_strerror(int errnum) {
+	switch (errnum) {
+		case ERESTARTSYS: return "To be restarted if SA_RESTART is set";
+		// case ERESTARTNOINTR: return "";
+		// case ERESTARTNOHAND: return "";
+		// case ENOIOCTLCMD: return "";
+		// case ERESTART_RESTARTBLOCK: return "";
+		// case EPROBE_DEFER: return "";
+		// case EOPENSTALE: return "";
+		// case ENOPARAM: return "";
+		default: return strerror(errnum);
+	}
+}
+
 void handle_x86_64_syscall(pid_t pid, tracing_state_t *state, struct user_regs_struct *regs) {
 	if (regs->orig_rax == SYS_execve) {
 		state->started = true;
@@ -315,7 +329,24 @@ void handle_x86_64_syscall(pid_t pid, tracing_state_t *state, struct user_regs_s
 	}
 	else if (state->syscall_state == WAIT_FOR_RETURN) {
 		if ((long long)regs->rax < 0) {
-			printf(" = -1 %s (%s)\n", get_errno_name(-regs->rax), strerror(-regs->rax));
+			int errnum = -regs->rax;
+			printf(" = ");
+			switch (errnum) {
+				case ERESTARTSYS:
+				case ERESTARTNOINTR:
+				case ERESTARTNOHAND:
+				case ENOIOCTLCMD:
+				case ERESTART_RESTARTBLOCK:
+				case EPROBE_DEFER:
+				case EOPENSTALE:
+				case ENOPARAM:
+					printf("?");
+					break;
+				default:
+					printf("-1");
+					break;
+			}
+			printf(" %s (%s)\n", get_errno_name(errnum), ft_strerror(errnum));
 		}
 		else {
 			printf(" = %lli\n", regs->rax);
